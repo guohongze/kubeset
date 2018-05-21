@@ -7,7 +7,7 @@ import click
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from lib.deployment import Deployment
-
+from pprint import pprint
 
 def k8s_init():
     config.load_kube_config()
@@ -45,8 +45,9 @@ def deployment(ns):
         ret = api_instance.list_deployment_for_all_namespaces()
     else:
         ret = api_instance.list_namespaced_deployment(ns)
+    print("name\t    replicas\t    available\t    generation")
     for i in ret.items:
-        print(i)
+        print("{:<15} {:<15} {:<15} {:<15}".format(i.metadata.name, i.spec.replicas, i.status.available_replicas, i.metadata.generation))
 
 
 @click.command()
