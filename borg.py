@@ -5,10 +5,13 @@
 
 import click
 from kubernetes import client, config
+import json
+from kubernetes.client.rest import ApiException
+from pprint import pprint
+config.load_kube_config()
 
 
 def k8s_init():
-    config.load_kube_config()
     extensions_v1beta1 = client.ExtensionsV1beta1Api()
     return extensions_v1beta1
 
@@ -33,6 +36,24 @@ def list_node():
     ret = v1.list_node()
     for i in ret.items:
         print("%s\t%s" % (i.status.addresses, i.metadata.name))
+
+
+@click.command()
+@click.option('--name', help='service name')
+@click.option('--ns', help='namespace name')
+def create_svc(name, ns="default"):
+    api_instance = client.CoreV1Api()
+    svc = client.V1Service()
+    svc.api_version = "v1"
+    svc.kind = "Service"
+    svc.metadata = client.V1ObjectMeta(name=name)
+    spec = client.V1ServiceSpec()
+    spec.selector = {"app": "nginx-dep"}
+    spec.type = "NodePort"
+    spec.ports = [client.V1ServicePort(protocol="TCP", port=80, target_port=80)]
+    svc.spec = spec
+    api_response = api_instance.create_namespaced_service(namespace=ns, body=svc)
+    print("Deployment updated. status='%s'" % str(api_response.status))
 
 
 def create_deployment_object(name, status, replicas=3):
@@ -68,7 +89,7 @@ def create_deployment_object(name, status, replicas=3):
 @click.option('--img', help='docker images address')
 @click.option('--replicas', help='pod replica number')
 @click.option('--ns', default="default", help='namespace name')
-def update(name, replicas, img, ns):
+def update_dep(name, replicas, img, ns):
     # Update container image
     status = "update"
     api_instance = k8s_init()
@@ -88,10 +109,10 @@ def update(name, replicas, img, ns):
 
 @click.command()
 @click.option('--name', help='deployment name')
-@click.option('--img', help='docker images address')
+@click.option('--image', help='docker images address')
 @click.option('--replicas', help='pod replica number')
 @click.option('--ns', default="default", help='namespace name')
-def create(name, replicas, img, ns):
+def create_dep(name, replicas, img, ns):
     # Update container image
     status = "create"
     api_instance = k8s_init()
@@ -106,9 +127,29 @@ def create(name, replicas, img, ns):
         namespace=ns,
         body=deployment)
     print("Deployment updated. status='%s'" % str(api_response.status))
+
+
+@click.command()
+@click.option('--name', help='application name')
+@click.option('--ns', default="default", help='namespace name')
+def view(name, ns):
+    dep_api_instance = k8s_init()
+    svc_api_instance = client.CoreV1Api()
+    try:
+        dep_instance = dep_api_instance.read_namespaced_deployment_status(name, namespace=ns, exact=True, export=True)
+        svc_instance = svc_api_instance.read_namespaced_service(name, namespace=ns, exact=True, export=True)
+    except ApiException as e:
+        print("Exception when calling CoreV1Api->read_namespaced_service:% s\n" % e)
+    print(dep_instance.status)
+    print("==================")
+    print(svc_instance.status)
+
+
 if __name__ == '__main__':
     cli.add_command(list_pod)
     cli.add_command(list_node)
-    cli.add_command(create)
-    cli.add_command(update)
+    cli.add_command(create_dep)
+    cli.add_command(update_dep)
+    cli.add_command(create_svc)
+    cli.add_command(view)
     cli()
