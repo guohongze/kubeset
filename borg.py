@@ -47,7 +47,7 @@ def deployment(ns):
         ret = api_instance.list_namespaced_deployment(ns)
     for i in ret.items:
         print()
-        print("%s\t%s\t%s" % (i.metadata.name, i.replicas, i.unavailable))
+        print("%s\t%s" % (i.metadata.name, i.unavailable))
 
 
 @click.command()
