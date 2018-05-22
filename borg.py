@@ -4,13 +4,15 @@
 
 
 import click
-from kubernetes import client
+from kubernetes import client, config
 from kubernetes.client.rest import ApiException
-
 from lib.deployment import Deployment
 
 
-#config.load_kube_config()
+def k8s_init():
+    config.load_kube_config()
+    api_instance = client.CoreV1Api()
+    return api_instance
 
 
 @click.group()
@@ -20,17 +22,17 @@ def cli():
 
 @click.command()
 def pods():
-    v1 = client.CoreV1Api()
+    api_instance = k8s_init()
     print("Listing pods with their IPs:")
-    ret = v1.list_pod_for_all_namespaces(watch=False)
+    ret = api_instance.list_pod_for_all_namespaces(watch=False)
     for i in ret.items:
         print("%s\t%s\t%s" % (i.status.pod_ip, i.metadata.namespace, i.metadata.name))
 
 
 @click.command()
 def nodes():
-    v1 = client.CoreV1Api()
-    ret = v1.list_node()
+    api_instance = k8s_init()
+    ret = api_instance.list_node()
     for i in ret.items:
         print("%s\t%s" % (i.status.addresses, i.metadata.name))
 
