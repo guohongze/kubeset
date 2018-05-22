@@ -4,9 +4,12 @@
 
 
 import click
-from kubernetes import client, config
+from kubernetes import client
 from kubernetes.client.rest import ApiException
-from kubeset import Deployment
+
+from lib.deployment import Deployment
+
+
 #config.load_kube_config()
 
 
