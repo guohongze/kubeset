@@ -46,8 +46,7 @@ def deployment(ns):
     else:
         ret = api_instance.list_namespaced_deployment(ns)
     for i in ret.items:
-        print()
-        print("%s\t%s" % (i.metadata.name, i.unavailable))
+        print(i)
 
 
 @click.command()
