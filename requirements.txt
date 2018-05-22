@@ -1,2 +1,2 @@
-kubernetes==6.0.0
+kubernetes==5.0.0
 click==6.7

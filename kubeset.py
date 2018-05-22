@@ -6,7 +6,7 @@ from kubernetes.client.rest import ApiException
 
 
 class Deployment(object):
-    def __init__(self, name, namespace, replicas=1, img="gtest.com/myproj/cent_nginx:3.0"):
+    def __init__(self, name, namespace, replicas=None, img=None):
         self.name = name
         self.namespace = namespace
         self.replicas = replicas
@@ -14,6 +14,7 @@ class Deployment(object):
 
     @staticmethod
     def k8s_init():
+        config.load_kube_config()
         extensions_v1beta1 = client.ExtensionsV1beta1Api()
         return extensions_v1beta1
 
@@ -46,7 +47,7 @@ class Deployment(object):
     def create(self):
         status = "create"
         api_instance = self.k8s_init()
-        deployment = self.create_deployment_object(self.name, status)
+        deployment = self.create_deployment_object(status)
         # Update the deployment
         if self.img:
             deployment.spec.template.spec.containers[0].image = self.img
@@ -58,11 +59,11 @@ class Deployment(object):
             body=deployment)
         return api_response
 
-    def udpate(self):
+    def update(self):
         # Update container image
         status = "update"
         api_instance = self.k8s_init()
-        deployment = self.create_deployment_object(self.name, status)
+        deployment = self.create_deployment_object(status)
         # Update the deployment
         if self.img:
             deployment.spec.template.spec.containers[0].image = self.img

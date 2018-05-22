@@ -5,15 +5,9 @@
 
 import click
 from kubernetes import client, config
-import json
 from kubernetes.client.rest import ApiException
-from pprint import pprint
-config.load_kube_config()
-
-
-def k8s_init():
-    extensions_v1beta1 = client.ExtensionsV1beta1Api()
-    return extensions_v1beta1
+from kubeset import Deployment
+#config.load_kube_config()
 
 
 @click.group()
@@ -22,7 +16,7 @@ def cli():
 
 
 @click.command()
-def list_pod():
+def pods():
     v1 = client.CoreV1Api()
     print("Listing pods with their IPs:")
     ret = v1.list_pod_for_all_namespaces(watch=False)
@@ -31,11 +25,24 @@ def list_pod():
 
 
 @click.command()
-def list_node():
+def nodes():
     v1 = client.CoreV1Api()
     ret = v1.list_node()
     for i in ret.items:
         print("%s\t%s" % (i.status.addresses, i.metadata.name))
+
+
+@click.command()
+@click.option('--ns', default="default", help='namespace name')
+def deployment(ns):
+    api_instance = Deployment.k8s_init()
+    if ns == "all":
+        ret = api_instance.list_deployment_for_all_namespaces()
+    else:
+        ret = api_instance.list_namespaced_deployment(ns)
+    for i in ret.items:
+        print()
+        print("%s\t%s\t%s" % (i.metadata.name, i.replicas, i.unavailable))
 
 
 @click.command()
@@ -56,100 +63,86 @@ def create_svc(name, ns="default"):
     print("Deployment updated. status='%s'" % str(api_response.status))
 
 
-def create_deployment_object(name, status, replicas=3):
-    # Configureate Pod template container
-    container = client.V1Container(
-        name=name,
-        image="gtest.com/myproj/cent_nginx:3.0",
-        ports=[client.V1ContainerPort(container_port=80)])
-    # Create and configurate a spec section
-    template = client.V1PodTemplateSpec(
-        metadata=client.V1ObjectMeta(labels={"app": name}),
-        spec=client.V1PodSpec(containers=[container]))
-    # Create the specification of deployment
-    if status == "update":
-        spec = client.ExtensionsV1beta1DeploymentSpec(
-            template=template)
-    if status == "create":
-        spec = client.ExtensionsV1beta1DeploymentSpec(
-            replicas=replicas,
-            template=template)
-    # Instantiate the deployment object
-    deployment = client.ExtensionsV1beta1Deployment(
-        api_version="extensions/v1beta1",
-        kind="Deployment",
-        metadata=client.V1ObjectMeta(name=name),
-        spec=spec)
-
-    return deployment
-
-
 @click.command()
 @click.option('--name', help='deployment name')
 @click.option('--img', help='docker images address')
 @click.option('--replicas', help='pod replica number')
 @click.option('--ns', default="default", help='namespace name')
-def update_dep(name, replicas, img, ns):
-    # Update container image
-    status = "update"
-    api_instance = k8s_init()
-    deployment = create_deployment_object(name, status)
-    # Update the deployment
+def update(name, replicas, img, ns):
+    api_instance = Deployment(name, ns, replicas, img)
     if img:
-        deployment.spec.template.spec.containers[0].image = img
+        update_response = api_instance.update()
     if replicas:
-        replicas = int(replicas)
-        deployment.spec.replicas = replicas
-    api_response = api_instance.patch_namespaced_deployment(
-        name=name,
-        namespace=ns,
-        body=deployment)
-    print("Deployment updated. status='%s'" % str(api_response.status))
+        update_response = api_instance.update()
+    return update_response
 
 
 @click.command()
 @click.option('--name', help='deployment name')
-@click.option('--image', help='docker images address')
-@click.option('--replicas', help='pod replica number')
+@click.option('--img', default="nginx:1.11", help='docker images address')
+@click.option('--replicas', default=1, help='pod replica number')
 @click.option('--ns', default="default", help='namespace name')
 def create_dep(name, replicas, img, ns):
-    # Update container image
-    status = "create"
-    api_instance = k8s_init()
-    deployment = create_deployment_object(name, status)
-    # Update the deployment
-    if img:
-        deployment.spec.template.spec.containers[0].image = img
-    if replicas:
-        replicas = int(replicas)
-        deployment.spec.replicas = replicas
-    api_response = api_instance.create_namespaced_deployment(
-        namespace=ns,
-        body=deployment)
-    print("Deployment updated. status='%s'" % str(api_response.status))
+    api_instance = Deployment(name, ns, replicas, img)
+    create_response = api_instance.create()
+    return create_response
+
+
+@click.command()
+@click.option('--name', help='deployment name')
+@click.option('--ns', default="default", help='namespace name')
+def delete_dep(name, ns):
+    api_instance = Deployment(name, ns)
+    delete_response = api_instance.delete()
+    return delete_response
+
+
+@click.command()
+@click.option('--name', help='deployment name')
+@click.option('--ns', default="default", help='namespace name')
+def delete_svc(name, ns):
+    api_instance = Deployment(name, ns)
+    delete_response = api_instance.delete()
+    return delete_response
+
+
+@click.command()
+@click.option('--name', help='deployment name')
+@click.option('--ns', default="default", help='namespace name')
+def create(name, ns):
+    pass
+
+
+@click.command()
+@click.option('--name', help='deployment name')
+@click.option('--ns', default="default", help='namespace name')
+def delete(name, ns):
+    pass
 
 
 @click.command()
 @click.option('--name', help='application name')
 @click.option('--ns', default="default", help='namespace name')
 def view(name, ns):
-    dep_api_instance = k8s_init()
+    dep_api_instance = Deployment.k8s_init()
     svc_api_instance = client.CoreV1Api()
     try:
         dep_instance = dep_api_instance.read_namespaced_deployment_status(name, namespace=ns, exact=True, export=True)
         svc_instance = svc_api_instance.read_namespaced_service(name, namespace=ns, exact=True, export=True)
     except ApiException as e:
         print("Exception when calling CoreV1Api->read_namespaced_service:% s\n" % e)
-    print(dep_instance.status)
-    print("==================")
-    print(svc_instance.status)
 
 
 if __name__ == '__main__':
-    cli.add_command(list_pod)
-    cli.add_command(list_node)
+    cli.add_command(pods)
+    cli.add_command(nodes)
+    cli.add_command(deployment)
     cli.add_command(create_dep)
-    cli.add_command(update_dep)
+    cli.add_command(delete_dep)
     cli.add_command(create_svc)
+    cli.add_command(delete_svc)
+    cli.add_command(create)
+    cli.add_command(update)
+    cli.add_command(delete)
     cli.add_command(view)
     cli()
