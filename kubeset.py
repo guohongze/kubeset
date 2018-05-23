@@ -91,9 +91,10 @@ def create_svc(name, ns):
 @click.option('--name', help='deployment name')
 @click.option('--ns', default="default", help='namespace name')
 def delete_svc(name, ns):
-    api_instance = Deployment(name, ns)
-    delete_response = api_instance.delete()
-    return delete_response
+    api_instance = Service(name, ns)
+    api_response = api_instance.delete()
+    if api_response:
+        print(api_response)
 
 
 @click.command()
