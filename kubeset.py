@@ -102,7 +102,7 @@ def delete_svc(name, ns):
 @click.option('--img', help='docker images address')
 @click.option('--replicas', help='pod replica number')
 @click.option('--ns', default="default", help='namespace name')
-def update(name, replicas, img, ns):
+def update_dep(name, replicas, img, ns):
     api_instance = Deployment(name, ns, replicas, img)
     if img:
         update_response = api_instance.update()
@@ -114,16 +114,19 @@ def update(name, replicas, img, ns):
 @click.command()
 @click.option('--name', help='deployment name')
 @click.option('--ns', default="default", help='namespace name')
-def create(name, ns):
-    pass
+@click.option('--img', default="nginx:1.11", help='docker images address')
+@click.option('--replicas', default=1, help='pod replica number')
+def create(name, ns, img, replicas):
+    create_dep(name, replicas, img, ns)
+    create_svc(name, ns)
 
 
 @click.command()
 @click.option('--name', help='deployment name')
 @click.option('--ns', default="default", help='namespace name')
 def delete(name, ns):
-    pass
-
+    delete_dep(name, ns)
+    delete_svc(name, ns)
 
 @click.command()
 @click.option('--name', help='application name')
@@ -143,11 +146,11 @@ if __name__ == '__main__':
     cli.add_command(nodes)
     cli.add_command(deployment)
     cli.add_command(create_dep)
+    cli.add_command(update_dep)
     cli.add_command(delete_dep)
     cli.add_command(create_svc)
     cli.add_command(delete_svc)
     cli.add_command(create)
-    cli.add_command(update)
     cli.add_command(delete)
     cli.add_command(view)
     cli()
