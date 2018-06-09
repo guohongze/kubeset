@@ -132,6 +132,7 @@ def delete(name, ns):
     svc_instance = Service(name, ns)
     svc_instance.delete()
 
+
 @click.command()
 @click.option('--name', help='application name')
 @click.option('--ns', default="default", help='namespace name')
