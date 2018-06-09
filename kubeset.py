@@ -127,8 +127,10 @@ def create(name, ns, img, replicas):
 @click.option('--name', help='deployment name')
 @click.option('--ns', default="default", help='namespace name')
 def delete(name, ns):
-    delete_dep(name, ns)
-    delete_svc(name, ns)
+    dep_instance = Deployment(name, ns)
+    dep_instance.delete()
+    svc_instance = Service(name, ns)
+    svc_instance.delete()
 
 @click.command()
 @click.option('--name', help='application name')
