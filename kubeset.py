@@ -117,8 +117,10 @@ def update_dep(name, replicas, img, ns):
 @click.option('--img', default="nginx:1.11", help='docker images address')
 @click.option('--replicas', default=1, help='pod replica number')
 def create(name, ns, img, replicas):
-    create_dep(name, replicas, img, ns)
-    create_svc(name, ns)
+    dep_instance = Deployment(name, ns, replicas, img)
+    dep_instance.create()
+    svc_instance = Service(name, ns)
+    svc_instance.create()
 
 
 @click.command()
